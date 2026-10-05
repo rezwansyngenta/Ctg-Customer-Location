@@ -283,9 +283,20 @@ async function apiCall(payload) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), CONFIG.API_TIMEOUT || 20000);
   try {
+    /* Content-Type MUST be text/plain, not application/json.
+       application/json is not on the CORS safelist, so the browser fires a
+       preflight first - and Apps Script's answer to OPTIONS carries no
+       Access-Control-Allow-Origin, so the preflight fails and the real
+       request is never sent. fetch then reports "TypeError: Failed to
+       fetch", which this app reads as a network fault: every submission
+       queues on the phone and the sheet stays empty.
+
+       text/plain IS safelisted, so no preflight happens at all, and the
+       POST response does carry Access-Control-Allow-Origin: *. The body is
+       still JSON and Apps Script reads e.postData.contents either way. */
     const res = await fetch(CONFIG.GAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify(payload),
       signal: ctrl.signal
     });
