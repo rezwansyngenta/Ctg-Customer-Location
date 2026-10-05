@@ -1,0 +1,35 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Customer master data: BP IDs, shop names, addresses.
+# Never commit this to a public repo. It lives in the Google Sheet
+# instead, which is access-controlled.
+*.xlsx
+*.xls
+*.csv
+
+# config.js is intentionally NOT ignored. It holds the deployment URL,
+# the app throws "সার্ভার ঠিকানা সেট করা নেই" without it, and GitHub Pages
+# serves only committed files, so ignoring it ships a dead app. The GAS URL
+# is public by design (deployment access is "Anyone"), so it is not a
+# secret. See README for the tradeoff.
+
+# Logs
+*.log
+
+# Temporary
+tmp/
+temp/

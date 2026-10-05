@@ -1,0 +1,13 @@
+# woff2 is binary. Without this, the Windows autocrlf=true setting runs a
+# CRLF pass over the font and corrupts it, which breaks Bengali rendering.
+*.woff2 -text -diff
+
+# Keep these on LF in the repo regardless of the Windows checkout setting,
+# so the bytes served by GitHub Pages match what was tested locally.
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.svg  text eol=lf
+*.md   text eol=lf
+*.gs   text eol=lf

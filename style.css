@@ -1,0 +1,511 @@
+/* ============================================================
+   Customer Pinpoint Location — Syngenta
+   Mobile-first. Brand colours read from Syngenta_Logo.svg:
+     green leaf  #019934
+     navy wordmark #010066
+   ============================================================ */
+
+/* ---------- Self-hosted fonts: required for Bengali on
+   low-end Android ROMs that ship no Bengali system font ---------- */
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/HindSiliguri-Bengali-400.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1;
+}
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/HindSiliguri-Latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/HindSiliguri-Bengali-700.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1;
+}
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/HindSiliguri-Latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+}
+
+/* ---------- Tokens ---------- */
+:root {
+  --green:        #019934;
+  --green-dark:   #017a2a;
+  --green-darker: #015f21;
+  --green-tint:   #e8f7ed;
+  --navy:         #010066;
+  --navy-soft:    #1a1a7a;
+
+  --ink:      #10221b;
+  --ink-mid:  #4a5a53;
+  --ink-soft: #74857d;
+
+  --bg:       #f2f5f3;
+  --surface:  #ffffff;
+  --line:     #e3eae6;
+  --line-mid: #cfdad4;
+
+  --amber:      #b45309;
+  --amber-tint: #fef4e2;
+  --red:        #b91c1c;
+  --red-tint:   #fdeaea;
+
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  --tap: 52px;          /* minimum touch target */
+  --shadow-sm: 0 1px 2px rgba(16,34,27,.06);
+  --shadow-md: 0 4px 16px rgba(16,34,27,.08);
+  --shadow-lg: 0 12px 32px rgba(1,0,102,.10);
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+
+/* ---------- Reset ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* .btn sets display:flex, which outranks the UA [hidden] rule on
+   equal specificity. Without this, hidden buttons stay visible. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'Nirmala UI', system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.75;          /* Bengali matras above + below need the room */
+  color: var(--ink);
+  background: var(--bg);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+}
+
+svg { width: 1em; height: 1em; fill: currentColor; vertical-align: middle; }
+
+/* ---------- App frame ---------- */
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px calc(28px + var(--safe-b));
+}
+
+/* ---------- Brand header ---------- */
+.brandbar {
+  margin: 0 -16px 14px;
+  padding: calc(14px + var(--safe-t)) 16px 0;
+  background: var(--surface);
+}
+.brandbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+.brand-logo { height: 26px; width: auto; display: block; }
+.brand-divider {
+  width: 1px; height: 20px;
+  background: var(--line-mid);
+  flex-shrink: 0;
+}
+.brand-app {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-mid);
+  letter-spacing: .01em;
+}
+.brandbar-strip {
+  height: 4px;
+  background: linear-gradient(90deg, var(--green) 0%, var(--navy) 100%);
+}
+
+/* ---------- Status pills ---------- */
+.statusrow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 700;
+  background: var(--green-tint);
+  color: var(--green-dark);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.pill-muted { background: #eceff3; color: var(--ink-soft); }
+.pill-offline { background: var(--amber-tint); color: var(--amber); }
+.pill-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.pill-offline .pill-dot { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+/* ---------- Step progress ---------- */
+.progress { margin-bottom: 18px; }
+.progress-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--green) 0%, #03b53e 100%);
+  transition: width .35s cubic-bezier(.4,0,.2,1);
+}
+.progress-label {
+  margin-top: 7px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+/* ---------- Card / screen ---------- */
+.screen {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 26px 20px 22px;
+  box-shadow: var(--shadow-md);
+  animation: rise .28s cubic-bezier(.2,.7,.3,1);
+}
+.screen[hidden] { display: none; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.stepnum {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  background: var(--green-tint);
+  color: var(--green-dark);
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.screen-title {
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.screen-lead {
+  font-size: 16.5px;
+  color: var(--ink-mid);
+  margin-bottom: 18px;
+}
+
+/* ---------- Hero icon ---------- */
+.hero-icon {
+  width: 62px; height: 62px;
+  border-radius: 19px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  font-size: 30px;
+}
+.hero-icon-green  { background: var(--green-tint); color: var(--green); }
+.hero-icon-amber  { background: var(--amber-tint); color: var(--amber); }
+.hero-icon-red    { background: var(--red-tint);   color: var(--red); }
+.hero-icon-neutral { background: #eceff3; color: var(--ink-soft); }
+
+/* ---------- Messages ---------- */
+.msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 15px;
+  border-radius: var(--r-md);
+  font-size: 15.5px;
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+.msg-info { background: var(--green-tint); color: var(--green-darker); }
+.msg-warn { background: var(--amber-tint); color: #7c3d06; border: 1px solid #f5d9a8; }
+.msg-err  { background: var(--red-tint);   color: #7f1d1d; border: 1px solid #f4c4c4; }
+.msg-ok   { background: var(--green-tint); color: var(--green-darker); border: 1px solid #b9e5c8; }
+.msg-lg   { font-size: 16.5px; padding: 16px; }
+
+.spinner {
+  width: 18px; height: 18px;
+  border: 2.5px solid rgba(1,153,52,.25);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+  flex-shrink: 0;
+  margin-top: 4px;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Field ---------- */
+.field-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 7px;
+}
+.field {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 13px 15px;
+  border: 2px solid var(--line-mid);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .06em;
+}
+.field::placeholder { color: #a8b6b0; font-weight: 400; letter-spacing: normal; }
+.field:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px rgba(1,153,52,.12);
+}
+.field-note {
+  min-height: 26px;
+  margin-top: 8px;
+  font-size: 14.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.note-ok   { color: var(--green); }
+.note-err  { color: var(--red); }
+.note-info { color: var(--ink-soft); font-weight: 400; }
+
+/* ---------- Detail / review cards ---------- */
+.detailcard, .reviewcard {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-bottom: 16px;
+  background: #fbfcfc;
+}
+.detailcard[hidden] { display: none; }
+.detailcard-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 15px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.detailcard-head svg { font-size: 19px; flex-shrink: 0; }
+.detailcard-row { padding: 12px 15px; display: flex; gap: 12px; flex-wrap: wrap; }
+.detailcard-key { font-size: 14.5px; color: var(--ink-soft); font-weight: 700; }
+.detailcard-val { font-size: 15px; color: var(--ink); flex: 1 1 200px; }
+
+.reviewcard-head {
+  padding: 11px 15px;
+  background: var(--green-tint);
+  color: var(--green-darker);
+  font-size: 14px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+.reviewrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 15px;
+}
+.reviewrow + .reviewrow { border-top: 1px solid var(--line); }
+.rkey { font-size: 14.5px; color: var(--ink-soft); font-weight: 700; flex-shrink: 0; }
+.rval { font-size: 15.5px; font-weight: 700; text-align: right; }
+.mono { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+
+/* ---------- Consent ---------- */
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 15px;
+  border: 2px solid var(--line-mid);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  margin-bottom: 18px;
+  transition: border-color .15s, background .15s;
+}
+.consent:has(input:checked) {
+  border-color: var(--green);
+  background: var(--green-tint);
+}
+.consent:has(input:focus-visible) {
+  box-shadow: 0 0 0 4px rgba(1,153,52,.12);
+}
+.consent input {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+}
+.consent-box {
+  width: 28px; height: 28px;
+  border: 2.5px solid var(--line-mid);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: transparent;
+  font-size: 19px;
+  transition: all .15s;
+}
+.consent input:checked + .consent-box {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.consent input:focus-visible + .consent-box {
+  box-shadow: 0 0 0 4px rgba(1,153,52,.18);
+}
+.consent-text { font-size: 15.5px; line-height: 1.6; }
+
+/* ---------- Buttons ---------- */
+/* Sticky so the primary action stays under the thumb when the on-screen
+   keyboard shrinks the viewport. background + blur so scrolled content
+   never shows through the buttons. */
+.actionbar {
+  position: sticky;
+  bottom: calc(10px + var(--safe-b));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 -20px -22px;
+  padding: 14px 20px calc(22px + var(--safe-b));
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--surface) 22%, var(--surface) 100%);
+}
+@supports (backdrop-filter: blur(1px)) {
+  .actionbar { backdrop-filter: blur(8px); }
+}
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 56px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: var(--r-md);
+  font-family: inherit;
+  font-size: 17.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: transform .1s, box-shadow .15s, background .15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.btn-ico { font-size: 21px; flex-shrink: 0; }
+.btn:active:not(:disabled) { transform: scale(.985); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--green) 0%, var(--green-darker) 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(1,153,52,.28);
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(1,153,52,.36); }
+.btn-primary:disabled {
+  background: #d3ddd8;
+  color: #97a6a0;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--navy);
+  border: 2px solid var(--line-mid);
+}
+.btn-outline:hover:not(:disabled) { border-color: var(--navy-soft); background: #f7f9f8; }
+.btn-outline:disabled { color: #b6c0bb; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-mid);
+  min-height: 46px;
+  font-size: 16px;
+}
+.btn-ghost:hover { background: #eef2f0; }
+.btn-ghost[hidden] { display: none; }
+
+.btn-busy { pointer-events: none; opacity: .8; }
+
+/* ---------- Footer ---------- */
+.appfoot {
+  margin-top: 20px;
+  padding: 16px 4px 0;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+.appfoot p {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.appfoot p + p { margin-top: 3px; }
+
+/* ---------- Respect reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ---------- Small phones ---------- */
+@media (max-width: 360px) {
+  body { font-size: 16px; }
+  .app { padding-left: 12px; padding-right: 12px; }
+  .brandbar { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
+  .screen { padding: 20px 15px 18px; }
+  .actionbar { margin: 0 -15px -18px; padding: 12px 15px calc(18px + var(--safe-b)); }
+  .screen-title { font-size: 21px; }
+  .btn { font-size: 16.5px; }
+  .hero-icon { width: 56px; height: 56px; font-size: 27px; }
+}

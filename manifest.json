@@ -1,0 +1,22 @@
+{
+  "name": "দোকানের লোকেশন — Syngenta",
+  "short_name": "দোকানের লোকেশন",
+  "description": "আপনার দোকানের লোকেশন সংরক্ষণ করা (ইন্টারনেট ছাড়াই কাজ করে)",
+  "lang": "bn",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#019934",
+  "background_color": "#ffffff",
+  "categories": ["business", "utilities"],
+  "icons": [
+    {
+      "src": "./Syngenta_Logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
