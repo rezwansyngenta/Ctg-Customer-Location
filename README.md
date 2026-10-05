@@ -34,10 +34,26 @@ Therefore, in `app.js`:
 
 - `apiCall()` throws `AppError('server')` when the body's `success` is explicitly `false`, and `AppError('network')` when `fetch` itself fails.
 - `validateBP` never sets `success`; it reports `valid: false` instead, so the two signals stay unambiguous.
-- A `server` error is permanent: the record is dropped from the retry queue rather than retried forever, and the customer is told to re-check their BP ID.
 - A `network` error is transient: the record is kept with a persisted exponential backoff (`attempts`, `nextAttemptAt`).
+- A `server` error is permanent **only for record-level rejections** - the codes listed in `PERMANENT_CODES` (`BP_NOT_FOUND`, `BP_INACTIVE`, `NO_CONSENT`, and friends). Those records are dropped. Every other server failure, including `SERVER_ERROR`, `BAD_JSON` and the sheet-level faults (`BAD_HEADERS`, `CUSTOMERS_EMPTY`, `NO_CUSTOMERS_SHEET`), is treated as Syngenta's problem to fix, so the record stays queued and retries. Losing a customer's location to a transient Apps Script timeout is worse than a queue that is briefly longer.
 
 Do not "simplify" this by trusting `response.ok`. It is always true.
+
+### `errorCode`, and why English never reaches the screen
+
+Every rejection carries a stable machine code alongside the human-readable `error` text:
+
+```json
+{ "success": false, "errorCode": "BP_NOT_FOUND", "error": "BP ID not found", "bpId": "12345678" }
+```
+
+`error` is English because it is what appears in Apps Script execution logs for whoever debugs the backend. The customer never reads it. `app.js` maps `errorCode` through `BANGLA_REASONS` and renders only the Bangla string; an unmapped code falls back to a generic Bangla line rather than leaking English onto the screen. When adding a new `errorCode` to `GAS.gs`, add the Bangla line to `BANGLA_REASONS` too.
+
+### CORS
+
+`jsonResponse()` in `GAS.gs` uses `.setHeaders({...})` to send `Access-Control-Allow-Origin: *`, and `doOptions` handles the preflight. This is not optional and not cosmetic. Without it the browser rejects the request before it reaches `doPost`, `fetch` rejects with `TypeError: Failed to fetch`, the app classifies that as a network fault, and every submission queues on the phone forever while the sheet stays empty.
+
+Note that `TextOutput` has **no** `setHttpHeader` method. Calling it throws a `TypeError` and breaks every response. Use `setHeaders`. Do not also assume Apps Script adds CORS headers on its own - verified absent on this deployment.
 
 ## Important Constraints
 

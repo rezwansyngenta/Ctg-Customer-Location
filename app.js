@@ -265,7 +265,7 @@ async function validateBp(bpId) {
     } else {
       currentBp = null;
       $('bp-details').hidden = true;
-      setBpNote(res.error || 'বিপি আইডি সঠিক নয়', 'note-err');
+      setBpNote(banglaReason(res), 'note-err');
     }
   } catch (e) {
     currentBp = { bpId };
@@ -298,7 +298,7 @@ async function apiCall(payload) {
        success flag is the only real signal. validateBP never sets it
        (it reports valid:false instead), so this stays unambiguous. */
     if (data && data.success === false) {
-      throw new AppError('server', data.error || 'সার্ভার সংরক্ষণ করেনি।');
+      throw new AppError('server', data.error || 'সার্ভার সংরক্ষণ করেনি।', data.errorCode);
     }
     return data;
   } catch (e) {
@@ -309,12 +309,53 @@ async function apiCall(payload) {
   }
 }
 
-/* kind: 'network' → retry later, 'server' → retry only if user retries
-   Anything the server rejected on validation will never succeed on a
-   blind retry, so it must NOT sit in the queue. */
+/* kind: 'network' → always retry later.
+   'server' → the request reached Apps Script and was refused. Whether that
+   is permanent depends on `code`, see PERMANENT_CODES below. */
 class AppError extends Error {
-  constructor(kind, message) { super(message); this.kind = kind; }
+  constructor(kind, message, code) {
+    super(message);
+    this.kind = kind;
+    this.code = code || null;
+  }
 }
+
+/* The server answers in English because its logs are for Syngenta staff.
+   The customer only reads Bangla, so every reason the server can send is
+   translated here. An unmapped code falls back to a plain Bangla line
+   rather than leaking English onto the screen. */
+const BANGLA_REASONS = {
+  BP_REQUIRED: 'বিপি আইডি লিখুন।',
+  BP_NOT_FOUND: 'এই বিপি আইডি আমাদের তালিকায় নেই।',
+  BP_INACTIVE: 'এই বিপি আইডি এখন চালু নেই।',
+  BAD_HEADERS: 'সার্ভারের তালিকা ঠিক নেই। সাপোর্টে জানান।',
+  NO_CUSTOMERS_SHEET: 'সার্ভারের তালিকা পাওয়া যায়নি। সাপোর্টে জানান।',
+  CUSTOMERS_EMPTY: 'সার্ভারের তালিকা এখন ফাঁকা। সাপোর্টে জানান।',
+  TOKEN_REQUIRED: 'এই বিপি আইডির জন্য লিংক দিয়ে আসতে হবে।',
+  TOKEN_INVALID: 'লিংকটি সঠিক নয়। নতুন লিংক নিন।',
+  NO_CONSENT: 'সম্মতি দেওয়া হয়নি।',
+  MISSING_FIELD: 'কিছু তথ্য পাঠানো হয়নি।',
+  BAD_JSON: 'সার্ভার উত্তর বুঝতে পারেনি।',
+  BAD_ACTION: 'সার্ভার উত্তর বুঝতে পারেনি।',
+  EMPTY_BODY: 'সার্ভার উত্তর বুঝতে পারেনি।',
+  SERVER_ERROR: 'সার্ভারে সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।'
+};
+
+function banglaReason(res, fallback) {
+  const fb = fallback || 'বিপি আইডি সঠিক নয়।';
+  if (!res || !res.errorCode) return fb;
+  return BANGLA_REASONS[res.errorCode] || fb;
+}
+
+/* Rejections that are about this record and nothing else. Retrying them
+   fails identically forever, so keeping them only fills the queue.
+   Everything else is kept and retried with backoff, including sheet-level
+   faults like BAD_HEADERS or CUSTOMERS_EMPTY: those are Syngenta's to fix
+   and a customer's captured location is worth more than a tidy queue. */
+const PERMANENT_CODES = [
+  'BP_REQUIRED', 'BP_NOT_FOUND', 'BP_INACTIVE',
+  'TOKEN_REQUIRED', 'TOKEN_INVALID', 'NO_CONSENT', 'MISSING_FIELD'
+];
 
 /* ---------------- geolocation ---------------- */
 
@@ -417,14 +458,14 @@ async function submit(tryNow) {
     } else {
       /* Server said no. Queuing this would retry a record that can
          never validate, so surface it and send the customer back. */
-      resultRejected((res && res.error) || 'সার্ভার সংরক্ষণ করেনি।');
+      resultRejected(banglaReason(res));
     }
   } catch (e) {
     if (e.kind === 'network') {
       await enqueue(payload);
       resultPending();
     } else {
-      resultRejected(e.message);
+      resultRejected(banglaReason({ errorCode: e.code }, 'সার্ভার সংরক্ষণ করেনি।'));
     }
   }
 }
@@ -490,10 +531,12 @@ async function retryPending() {
         if (res && res.success) await ackAndDelete(rec.localId);
       } catch (e) {
         const attempts = (rec.attempts || 0) + 1;
-        /* A hard server rejection will fail identically forever, so drop it
-           instead of burning the queue on a record that can never land.
-           Network blips get a real, persisted exponential backoff. */
-        if (e.kind === 'server') {
+        /* A rejection about THIS record (bad BP ID, no consent) will fail
+           identically forever, so drop it rather than burn the queue.
+           A server-side fault is not the record's fault: Apps Script
+           timeouts and quota errors must keep the fix and retry, or a
+           customer's location is lost to a transient glitch. */
+        if (e.kind === 'server' && PERMANENT_CODES.indexOf(e.code) >= 0) {
           await dbDel(rec.localId);
         } else {
           await dbPut(Object.assign({}, rec, {

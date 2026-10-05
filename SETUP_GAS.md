@@ -22,10 +22,10 @@ Add/confirm these columns (order doesn't strictly matter; the code looks up by h
 | `Postal_Area` | Text | (Optional) From Excel. |
 | `Upazilla` | Text | (Optional) From Excel. |
 | `District` | Text | (Optional) From Excel. |
-| `Status` | Text | Set to `Active` for valid customers. Any other value (or empty) is treated as inactive; submissions for inactive BPs are rejected. |
+| `Status` | Text | Optional. Anything other than `Active`, `1`, `true` or `yes` marks the customer inactive and their submissions are rejected. A blank cell, or no `Status` column at all, counts as active. |
 | `Invite_Token` | Text | (Optional, recommended) Customer-specific token for stronger identity verification. If used, validate on server in `submitLocation`. |
 
-Fill `Status` as `Active` for all customers you want to allow. The sample data shows BP IDs like 21137284 etc.; keep them as-is.
+`Status` is optional; leave it blank unless you want to pause a specific customer. The sample data shows BP IDs like 21137284 etc.; keep them as-is.
 
 > **Set `BP_ID` to Plain text before importing.** In Google Sheets, select the `BP_ID` column, then `Format > Number > Plain text`, *then* paste. If the column is formatted as a number, Sheets strips leading zeros (so `0071234` becomes `71234`) and every typed ID with a leading zero silently fails validation. Do this before the import, not after: reformatting afterwards will not restore digits Sheets already dropped.
 
@@ -170,9 +170,14 @@ There is **no UI for tokens and no setup cost**: a customer with an empty `Invit
 
 - **"GAS_URL not configured" in app**: Make sure `config.js` exists and `GAS_URL` is set correctly (no trailing spaces).
 - **Customers see a Google sign-in page instead of the app**: the deployment is not public. `Deploy > Manage deployments >` edit > `Who has access` > `Anyone`. Verified with a signed-out browser, not your own.
-- **Browser console shows a CORS preflight error**: almost always a symptom of the deployment not being public. A sign-in HTML page carries no CORS headers, so the preflight fails. Fix the access setting rather than the headers.
-- **BP IDs never validate, but they look right**: `BP_ID` is probably formatted as a number and leading zeros were stripped. See the Plain text note above.
-- **Every submission is rejected**: `Status` is blank. Anything other than `Active`/`1`/`true` is treated as inactive.
+- **Browser console shows a CORS preflight error, or every submission sits in the queue and the sheet stays empty**: two different causes, check them in order.
+  1. The deployment is not public. A sign-in HTML page carries no CORS headers, so the preflight fails. `Deploy > Manage deployments >` pencil > `Who has access` > `Anyone`.
+  2. `jsonResponse()` in `GAS.gs` lost its `.setHeaders({...})` call. Without `Access-Control-Allow-Origin: *` the browser blocks the request before it reaches `doPost`, `fetch` throws `TypeError: Failed to fetch`, and the app treats that as a network fault - so it queues silently forever. Note `TextOutput` has no `setHttpHeader` method; calling it throws a `TypeError` and breaks every response. `setHeaders` is the correct method.
+- **`TypeError: ...setHttpHeader is not a function` in the response**: an older `GAS.gs` is still deployed. Re-paste the current file and create a new deployment version.
+- **Re-check the backend at any time**: open the Web App URL in a browser. A healthy deployment returns JSON with `"success":true` and a `health` block listing your sheet names, the Customers row count, and the active-customer count. An HTML error page means the code itself is broken.
+- **"No customer data found"**: the `Customers` tab has headers but zero data rows, or the tab is named something other than `Customers`. The `health` block in the error response says which.
+- **BP IDs never validate, but they look right**: `BP_ID` is probably formatted as a number and leading zeros were stripped. See the Plain text note above. The backend also tolerates this at lookup time, but Plain text is still the right fix so your exported reports are correct.
+- **A customer is rejected as inactive**: their `Status` cell holds something other than `Active`, `1`, `true` or `yes`. A blank cell and a missing `Status` column both count as active, so an untouched customer list works out of the box.
 - **Bengali text shows as empty boxes**: the `fonts/` directory did not deploy, or was not precached. The font is self-hosted on purpose; an offline page cannot reach Google Fonts.
 - **First-time offline blocked**: You must open the app while online at least once so the Service Worker can cache files. This is by design.
 - **Service Worker never installs**: check `Application > Service Workers` in devtools. The shell is cached entry by entry, so one missing file no longer aborts the install. Confirm all 10 shell entries landed: `index.html`, `style.css`, `app.js`, `manifest.json`, `Syngenta_Logo.svg`, and the four `.woff2` files. `config.js` is intentionally *not* precached, because it is gitignored and only needed while online.
