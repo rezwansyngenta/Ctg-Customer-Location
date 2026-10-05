@@ -2,7 +2,11 @@
    Service worker — app shell cache for offline use
    ============================================================ */
 
-const CACHE = 'pinpoint-v2';
+/* Bump this on every release that changes a shell file. The activate
+   handler below deletes every cache that is not named here, so a new name
+   retires the old one on the next load. Without the bump, phones keep
+   serving the previous app.js from cache indefinitely. */
+const CACHE = 'pinpoint-v3';
 
 /* config.js is intentionally absent: it holds the deployment URL, is
    gitignored, and is only ever needed while online. Including it in a
@@ -77,26 +81,37 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  /* Cache-first for the shell, so an offline launch is instant. */
+  /* Stale-while-revalidate for the shell: serve the cached copy instantly
+     (an offline launch must not wait on the network) but refresh it in the
+     background when there IS a network. Pure cache-first meant a phone kept
+     running whatever app.js it had cached until someone remembered to bump
+     CACHE - and a stale app.js queues submissions that never drain. */
   e.respondWith((async () => {
-    const cached = await caches.match(req, { ignoreSearch: true });
-    if (cached) return cached;
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(req, { ignoreSearch: true });
 
-    try {
-      const res = await fetch(req);
+    const refresh = fetch(req).then(res => {
       if (res && res.status === 200 && res.type === 'basic') {
-        const copy = res.clone();
-        const cache = await caches.open(CACHE);
-        cache.put(req, copy);
+        cache.put(req, res.clone());
       }
       return res;
-    } catch (err) {
-      /* Offline navigation still has to render the app. */
-      if (req.mode === 'navigate') {
-        const fallback = await caches.match('./index.html');
-        if (fallback) return fallback;
-      }
-      throw err;
+    }).catch(() => null);
+
+    if (cached) {
+      /* Do not await: the cached copy answers now, the update lands for
+         the next load. */
+      e.waitUntil(refresh);
+      return cached;
     }
+
+    const fresh = await refresh;
+    if (fresh) return fresh;
+
+    /* Offline navigation still has to render the app. */
+    if (req.mode === 'navigate') {
+      const fallback = await cache.match('./index.html');
+      if (fallback) return fallback;
+    }
+    throw new Error('offline and not cached: ' + req.url);
   })());
 });
