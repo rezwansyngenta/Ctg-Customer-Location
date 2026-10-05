@@ -379,17 +379,14 @@ function findExisting_(sheet, localId) {
 
 // --------------------------------------------------------------- output
 
-// Apps Script has no setHttpHeader on TextOutput (calling it throws a
-// TypeError and breaks every response). setHeaders is the method that
-// exists, and it is required: without it the browser refuses the request
-// with "TypeError: Failed to fetch" and the app queues forever.
+// TextOutput exposes only getContent, setMimeType and setContentType.
+// It has NO setHttpHeader and NO setHeaders - calling either throws a
+// TypeError and breaks every response, including the health check.
+// Do not add CORS headers here. Apps Script sends
+// Access-Control-Allow-Origin: * on web app output by itself; the
+// browser preflight succeeds once this function stops throwing.
 function jsonResponse(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    .setMimeType(ContentService.MimeType.JSON);
 }

@@ -51,9 +51,9 @@ Every rejection carries a stable machine code alongside the human-readable `erro
 
 ### CORS
 
-`jsonResponse()` in `GAS.gs` uses `.setHeaders({...})` to send `Access-Control-Allow-Origin: *`, and `doOptions` handles the preflight. This is not optional and not cosmetic. Without it the browser rejects the request before it reaches `doPost`, `fetch` rejects with `TypeError: Failed to fetch`, the app classifies that as a network fault, and every submission queues on the phone forever while the sheet stays empty.
+Do not set CORS headers in `GAS.gs`. `TextOutput` exposes only `getContent()`, `setMimeType()` and `setContentType()` - it has neither `setHttpHeader` nor `setHeaders`. Calling either throws a `TypeError` that breaks *every* response, including the health check, and the browser then reports it as `TypeError: Failed to fetch`, which the app classifies as a network fault. The visible symptom is submissions queuing on the phone forever while the sheet stays empty.
 
-Note that `TextOutput` has **no** `setHttpHeader` method. Calling it throws a `TypeError` and breaks every response. Use `setHeaders`. Do not also assume Apps Script adds CORS headers on its own - verified absent on this deployment.
+Apps Script sends `Access-Control-Allow-Origin: *` on web app output by itself. Once `jsonResponse()` stops throwing, the preflight succeeds with no header code at all.
 
 ## Important Constraints
 
