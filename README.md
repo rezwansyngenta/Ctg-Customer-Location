@@ -53,7 +53,19 @@ Every rejection carries a stable machine code alongside the human-readable `erro
 
 Do not set CORS headers in `GAS.gs`. `TextOutput` exposes only `getContent()`, `setMimeType()` and `setContentType()` - it has neither `setHttpHeader` nor `setHeaders`. Calling either throws a `TypeError` that breaks *every* response, including the health check, and the browser then reports it as `TypeError: Failed to fetch`, which the app classifies as a network fault. The visible symptom is submissions queuing on the phone forever while the sheet stays empty.
 
-Apps Script sends `Access-Control-Allow-Origin: *` on web app output by itself. Once `jsonResponse()` stops throwing, the preflight succeeds with no header code at all.
+Apps Script sends `Access-Control-Allow-Origin: *` on the **POST** response by itself. Once `jsonResponse()` stops throwing, no header code is needed.
+
+The preflight is a separate problem. `Content-Type: application/json` is not on the CORS safelist, so the browser sends an `OPTIONS` request first — and an `OPTIONS` to the deployment comes back as `text/html` with **no** CORS headers. The real request never runs, `fetch` rejects with `TypeError: Failed to fetch`, and the app reads that as a network fault and queues the submission forever.
+
+`apiCall()` therefore sends `Content-Type: text/plain`, which *is* safelisted. No preflight is sent, the POST is sent and accepted. The body is still JSON; Apps Script reads `e.postData.contents` regardless of the declared content type. Do not "clean this up" back to `application/json`.
+
+Measured against the live deployment:
+
+| Request | Result |
+|---|---|
+| `OPTIONS` with `Access-Control-Request-*` | `200`, `text/html`, **no** `Access-Control-Allow-Origin` |
+| `POST`, `Content-Type: application/json` | browser blocks it at the preflight |
+| `POST`, `Content-Type: text/plain` | `200`, `application/json`, `Access-Control-Allow-Origin: *` |
 
 ## Important Constraints
 
