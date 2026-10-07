@@ -6,7 +6,7 @@
    handler below deletes every cache that is not named here, so a new name
    retires the old one on the next load. Without the bump, phones keep
    serving the previous app.js from cache indefinitely. */
-const CACHE = 'pinpoint-v3';
+const CACHE = 'pinpoint-v4';
 
 /* config.js is intentionally absent: it holds the deployment URL, is
    gitignored, and is only ever needed while online. Including it in a
@@ -16,14 +16,24 @@ const SHELL = [
   './',
   './index.html',
   './style.css',
-  './app.js',
+  './app.js'
+];
+
+/* Skeletons for offline rendering that do NOT need to gate activation.
+   If they sat in SHELL, every update re-fetched 160 KB of woff2 before
+   skipWaiting could claim the page - on a slow phone that loses the race
+   against the document's own script load, so a fresh refresh still served
+   the previous app.js. The stale-while-revalidate handler caches these on
+   the first online render instead, and offline fallback needs only
+   index.html + css + js, which ARE in SHELL. */
+const DEFERRED = [
   './manifest.json',
   './Syngenta_Logo.svg',
   './fonts/HindSiliguri-Bengali-400.woff2',
   './fonts/HindSiliguri-Bengali-700.woff2',
   './fonts/HindSiliguri-Latin-400.woff2',
   './fonts/HindSiliguri-Latin-700.woff2'
-];
+]
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
@@ -85,7 +95,13 @@ self.addEventListener('fetch', e => {
      (an offline launch must not wait on the network) but refresh it in the
      background when there IS a network. Pure cache-first meant a phone kept
      running whatever app.js it had cached until someone remembered to bump
-     CACHE - and a stale app.js queues submissions that never drain. */
+     CACHE - and a stale app.js queues submissions that never drain.
+
+     Navigations are the one exception and deliberately network-first:
+     every refresh reads the CURRENT index.html from the server, so a
+     release reaches a phone on the first reload instead of after a
+     stale-then-fresh two-load dance. Offline navigation still falls back
+     to the cached shell. */
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, { ignoreSearch: true });
@@ -97,6 +113,15 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => null);
 
+    if (req.mode === 'navigate') {
+      const fresh = await refresh;
+      if (fresh) return fresh;
+      if (cached) return cached;
+      const fallback = await cache.match('./index.html');
+      if (fallback) return fallback;
+      throw new Error('offline and not cached: ' + req.url);
+    }
+
     if (cached) {
       /* Do not await: the cached copy answers now, the update lands for
          the next load. */
@@ -107,7 +132,6 @@ self.addEventListener('fetch', e => {
     const fresh = await refresh;
     if (fresh) return fresh;
 
-    /* Offline navigation still has to render the app. */
     if (req.mode === 'navigate') {
       const fallback = await cache.match('./index.html');
       if (fallback) return fallback;
