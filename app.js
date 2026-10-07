@@ -196,6 +196,14 @@ function bindEvents() {
   $('btn-confirm-submit').addEventListener('click', () => submit(true));
   $('btn-save-offline').addEventListener('click', () => submit(false));
 
+  const pillRejected = $('pill-rejected');
+  if (pillRejected) {
+    pillRejected.addEventListener('click', () => {
+      const box = $('rejected-list');
+      box.hidden = !box.hidden;
+    });
+  }
+
   const bp = $('bp-id');
   let t;
   bp.addEventListener('input', () => {
@@ -489,7 +497,8 @@ async function enqueue(payload) {
     createdAt: new Date().toISOString(),
     attempts: 0,
     nextAttemptAt: Date.now(),
-    lastError: null
+    lastError: null,
+    status: 'pending'
   };
   await dbPut(rec);
   await refreshPendingCount();
@@ -499,9 +508,80 @@ async function enqueue(payload) {
 
 async function refreshPendingCount() {
   try {
-    const all = await dbAll();
-    $('pending-text').textContent = 'অপেক্ষমাণ: ' + (all ? all.length : 0);
+    const all = (await dbAll()) || [];
+    const rejected = all.filter(r => r.status === 'rejected');
+    $('pending-text').textContent = 'অপেক্ষমাণ: ' + (all.length - rejected.length);
+
+    const pill = $('pill-rejected');
+    const box = $('rejected-list');
+    if (!rejected.length) {
+      pill.hidden = true;
+      box.hidden = true;
+      box.textContent = '';
+      return;
+    }
+    $('rejected-text').textContent = 'জমা হয়নি: ' + rejected.length;
+    pill.hidden = false;
+    renderRejectedList(rejected);
   } catch (e) { /* count is cosmetic */ }
+}
+
+/* Permanently rejected records stay on the phone, visibly. The officer
+   can reload the BP into the form to retype it, or delete the row. */
+function renderRejectedList(rejected) {
+  const box = $('rejected-list');
+  box.textContent = '';
+  for (const rec of rejected) {
+    const row = document.createElement('div');
+    row.className = 'rejected-row';
+
+    const main = document.createElement('div');
+    main.className = 'rejected-main';
+    const bp = document.createElement('div');
+    bp.className = 'rejected-bp';
+    bp.textContent = 'বিপি আইডি: ' + ((rec.payload && rec.payload.bpId) || '—');
+    const why = document.createElement('div');
+    why.className = 'rejected-why';
+    why.textContent = banglaReason({ errorCode: rec.errorCode }, 'সার্ভার জমা নেয়নি।');
+    main.appendChild(bp);
+    main.appendChild(why);
+
+    const redo = document.createElement('button');
+    redo.type = 'button';
+    redo.className = 'btn btn-ghost btn-rejected-sm';
+    redo.textContent = 'আবার লিখুন';
+    redo.addEventListener('click', () => redoRejected(rec.localId));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn btn-ghost btn-rejected-sm';
+    del.textContent = 'মুছে ফেলুন';
+    del.addEventListener('click', () => dropRejected(rec.localId));
+
+    row.appendChild(main);
+    row.appendChild(redo);
+    row.appendChild(del);
+    box.appendChild(row);
+  }
+  box.hidden = false;
+}
+
+async function dropRejected(localId) {
+  await dbDel(localId);
+  await refreshPendingCount();
+}
+
+async function redoRejected(localId) {
+  const all = (await dbAll()) || [];
+  const rec = all.find(r => r.localId === localId);
+  await dbDel(localId);
+  if (rec && rec.payload && rec.payload.bpId) {
+    $('bp-id').value = rec.payload.bpId;
+  }
+  clearBpNote();
+  paintS4();
+  show(4);
+  await refreshPendingCount();
 }
 
 function backoffFor(attempts) {
@@ -533,6 +613,7 @@ async function retryPending() {
     const now = Date.now();
 
     for (const rec of all) {
+      if (rec.status === 'rejected') continue; /* terminal; surfaced below */
       if (rec.nextAttemptAt && rec.nextAttemptAt > now) continue;
 
       try {
@@ -543,12 +624,21 @@ async function retryPending() {
       } catch (e) {
         const attempts = (rec.attempts || 0) + 1;
         /* A rejection about THIS record (bad BP ID, no consent) will fail
-           identically forever, so drop it rather than burn the queue.
-           A server-side fault is not the record's fault: Apps Script
-           timeouts and quota errors must keep the fix and retry, or a
-           customer's location is lost to a transient glitch. */
+           identically forever. It must NOT be deleted: if this fix was
+           captured offline the customer never saw the rejection, so wiping
+           it silently is data loss. Keep it, mark it rejected and surface
+           it in the queue list so a human can fix the BP.
+           A server-side fault is not the record's fault either: Apps
+           Script timeouts and quota errors keep the fix and retry with
+           backoff, or a customer's location is lost to a transient glitch. */
         if (e.kind === 'server' && PERMANENT_CODES.indexOf(e.code) >= 0) {
-          await dbDel(rec.localId);
+          await dbPut(Object.assign({}, rec, {
+            status: 'rejected',
+            errorCode: e.code || null,
+            attempts,
+            lastError: e.message,
+            nextAttemptAt: Infinity
+          }));
         } else {
           await dbPut(Object.assign({}, rec, {
             attempts,

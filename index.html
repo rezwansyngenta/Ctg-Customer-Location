@@ -37,7 +37,13 @@
     <span class="pill pill-muted" id="pill-pending">
       <span id="pending-text">অপেক্ষমাণ: 0</span>
     </span>
+    <button type="button" class="pill pill-danger" id="pill-rejected" hidden>
+      <span id="rejected-text">জমা হয়নি: 0</span>
+    </button>
   </div>
+
+  <!-- ===== Rejected offline records (server refused, kept visibly) ===== -->
+  <div class="rejected-list" id="rejected-list" hidden></div>
 
   <!-- ===== Step progress ===== -->
   <div class="progress" id="progress" aria-hidden="true">
